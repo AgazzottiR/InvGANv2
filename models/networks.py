@@ -63,21 +63,89 @@ def init_weights(net, init_type='normal', init_gain=0.02):
     print('initialize network with %s' % init_type)
     net.apply(init_func)
 
+
 def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
-    if len(gpu_ids)>0:
+    if len(gpu_ids) > 0:
         assert torch.cuda.is_available()
         net.to(gpu_ids[0])
         net = torch.nn.DataParallel(net, gpu_ids)
     init_weights(net, init_type, init_gain=init_gain)
     return net
 
-def define_G(input_nc, output_nc, nfg, netG, norm='batch', use_dropout=False, init_type='normal', init_gain = 0.02, gpu_ids=[]):
+
+def define_G(input_nc, output_nc, nfg, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02,
+             gpu_ids=[]):
     net = None
+
 
 def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=.02, gpu_ids=[]):
     net = None
 
+
+class MappingNetwork(nn.Module):
+    def __init__(self):
+        super(MappingNetwork, self).__init__()
+        self.main = nn.Sequential(
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Linear(256, 100),
+            nn.Tanh()
+        )
+
+    def forward(self, x):
+        return self.main(x)
+
+
 class Generator(nn.Module):
-    pass
+    def __init__(self):
+        super(Generator, self).__init__()
+        self.main = nn.Sequential(
+            nn.ConvTranspose2d(100, 512, 4, 2, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+            nn.ConvTranspose2d(512, 256, 4, 2, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+            nn.ConvTranspose2d(256, 128, 4, 2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, 4, 2, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 3, 4, 2, padding=1),
+            nn.Tanh()
+        )
+
+    def forward(self, x):
+        return self.main(x)
+
+
 class Discriminator(nn.Module):
-    pass
+    def __init__(self):
+        super(Discriminator, self).__init__()
+        self.main = nn.Sequential(
+            nn.Conv2d(3, 32, 5, 2, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, 5, 2, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 128, 5, 2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.Conv2d(128, 101, 5, 2, padding=1),
+        )
+        self.linear = nn.Sequential(
+            nn.Linear(256, 4096),
+            nn.BatchNorm1d(4096),
+            nn.ReLU(),
+            nn.Linear(4096, 1)
+        )
+        self.sigm = nn.Sigmoid()
+
+    def forward(self, x):
+        x = self.main(x)
+        x = x.reshape((x.shape[0], -1))
+        out_z, out_rf = x[:, 0:100], self.sigm(x[:, -1])
+        return out_z, out_rf
