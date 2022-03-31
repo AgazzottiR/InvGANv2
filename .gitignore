@@ -9,3 +9,4 @@ params
 .gitignore
 *.pth
 checkpoints
+experiment_name

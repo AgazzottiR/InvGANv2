@@ -229,8 +229,8 @@ class Visualizer():
         self.plot_data['Y'].append([losses[k] for k in self.plot_data['legend']])
         try:
             self.vis.line(
-                X=np.stack([np.array(self.plot_data['X'])] * len(self.plot_data['legend']), 1),
-                Y=np.array(self.plot_data['Y']),
+                X=np.stack([np.array(self.plot_data['X'])] * len(self.plot_data['legend']), 1).reshape(-1),
+                Y=np.array(self.plot_data['Y']).reshape(-1),
                 opts={
                     'title': self.name + ' loss over time',
                     'legend': self.plot_data['legend'],
