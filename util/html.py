@@ -54,7 +54,7 @@ class HTML:
         f.close()
 
 
-if __name__ == '__main__':  # we show an example usage here.
+if __name__ == '__main__':
     html = HTML('web/', 'test_html')
     html.add_header('hello world')
 
