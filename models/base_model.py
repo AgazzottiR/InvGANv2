@@ -36,6 +36,9 @@ class BaseModel(ABC):
     @abstractmethod
     def optimize_parameters(self):
         pass
+    @abstractmethod
+    def set_image_input(self, input):
+        pass
 
     def setup(self, opt):
         if self.isTrain:

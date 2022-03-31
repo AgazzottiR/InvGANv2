@@ -26,7 +26,7 @@ def get_norm_layer(norm_type='instance'):
 def get_scheduler(optimizer, opt):
     if opt.lr_policy == 'linear':
         def lamda_rule(epoch):
-            lr_l = 1.0 - max(0, epoch + opt.epoch_count - opt.n_epoch) / float(opt.n_epochs_decay + 1)
+            lr_l = 1.0 - max(0, epoch + opt.epoch_count - opt.n_epochs) / float(opt.n_epochs_decay + 1)
             return lr_l
 
         scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lamda_rule)
@@ -38,6 +38,7 @@ def get_scheduler(optimizer, opt):
         scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=opt.n_epochs, eta_min=0)
     else:
         return NotImplemented('learning rate policy [%s] is not implemented', opt.lr_policy)
+    return scheduler
 
 
 def init_weights(net, init_type='normal', init_gain=0.02):
@@ -72,14 +73,15 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
     init_weights(net, init_type, init_gain=init_gain)
     return net
 
+# input_nc, output_nc, nfg, netG='vanilla', norm='batch', use_dropout=False, init_type='normal', init_gain=0.02,
+#              gpu_ids=[]
+def define_G():
+    return Generator()
 
-def define_G(input_nc, output_nc, nfg, netG, norm='batch', use_dropout=False, init_type='normal', init_gain=0.02,
-             gpu_ids=[]):
-    net = None
 
-
-def define_D(input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=.02, gpu_ids=[]):
-    net = None
+# input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=.02, gpu_ids=[]
+def define_D():
+    return Discriminator()
 
 
 class MappingNetwork(nn.Module):
@@ -98,10 +100,10 @@ class MappingNetwork(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self):
+    def __init__(self, input_nc=100, output_nc=3):
         super(Generator, self).__init__()
         self.main = nn.Sequential(
-            nn.ConvTranspose2d(100, 512, 4, 2, padding=1),
+            nn.ConvTranspose2d(input_nc, 512, 4, 2, padding=1),
             nn.BatchNorm2d(512),
             nn.ReLU(),
             nn.ConvTranspose2d(512, 256, 4, 2, padding=1),
@@ -113,7 +115,7 @@ class Generator(nn.Module):
             nn.ConvTranspose2d(128, 64, 4, 2, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 3, 4, 2, padding=1),
+            nn.ConvTranspose2d(64, output_nc, 4, 2, padding=1),
             nn.Tanh()
         )
 

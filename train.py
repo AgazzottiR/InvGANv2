@@ -1,4 +1,7 @@
 import time
+
+import torch
+
 from options.train_options import TrainOptions
 from models import create_model
 from util.visualize import Visualizer
@@ -6,9 +9,10 @@ from dataset import cifar10
 
 if __name__ == "__main__":
     opt = TrainOptions().parse()
-    dataloader = cifar10.get_cifar10_trainloader()
+    dataloader = cifar10.get_cifar10_trainloader(batch_size=opt.batch_size)
     data_size = len(dataloader)
     print('Training images = %d' % data_size)
+    t_data = 0
 
     model = create_model(opt)
     model.setup(opt)
@@ -28,7 +32,8 @@ if __name__ == "__main__":
 
             total_iters += opt.batch_size
             epoch_iter += opt.batch_size
-            model.set_input(data)
+            model.set_input(torch.randn((opt.batch_size, opt.latent_size,1,1)))
+            model.set_image_input(data)
             model.optimize_parameters()
 
             if total_iters % opt.print_freq == 0:

@@ -1,6 +1,7 @@
 import importlib
 from models.base_model import BaseModel
 
+
 def find_model_using_name(model_name):
     model_filename = "models." + model_name + "_model"
     modellib = importlib.import_module(model_filename)
@@ -11,15 +12,19 @@ def find_model_using_name(model_name):
             model = cls
 
     if model is None:
-        print("In %s.py, there should be a sub class of Basemodel that matches % in lowercase." %(model_filename, target_model_name))
+        print("In %s.py, there should be a sub class of Basemodel that matches %s in lowercase." % (
+        model_filename, target_model_name))
         exit(0)
     return model
+
 
 def get_option_setter(model_name):
     model_class = find_model_using_name(model_name)
     return model_class.modify_commandline_options
 
+
 def create_model(opt):
     model = find_model_using_name(opt.model)
     instance = model(opt)
     print("model [%s] was created" % type(instance).__name__)
+    return instance
