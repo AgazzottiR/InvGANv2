@@ -1,8 +1,11 @@
 wandb
-data
+images
+*.gz
 *.tar
 __pycache__
 .idea
 *.png
 params
 .gitignore
+*.pth
+checkpoints

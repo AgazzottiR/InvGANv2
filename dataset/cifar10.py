@@ -13,14 +13,14 @@ transform = transforms.Compose([
 ])
 
 
-def get_cifar10_trainloader(transfrom=transform, batch_size=128, workers=2):
+def get_cifar10_trainloader(batch_size=128, workers=2):
     dataset = dset.CIFAR10(root='./data', train=True, download=True, transform=transform)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers,
                                              drop_last=True)
     return dataloader
 
 
-def get_cifar10_testloader(transfrom=transform, batch_size=128, workers=2):
+def get_cifar10_testloader(batch_size=128, workers=2):
     dataset = dset.CIFAR10(root='./data', train=False, download=True, transform=transform)
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, num_workers=workers,
                                              drop_last=True)

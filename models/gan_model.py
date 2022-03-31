@@ -9,7 +9,8 @@ import torch.nn as nn
 class GanModel(BaseModel):
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
-        self.loss_name = ['BCELoss']
+        self.loss_name = ['GAN']
+        self.loss_GAN = 0
         visual_names_A = ['real', 'fake']
         self.real_label = 1.
         self.fake_label = 0.
@@ -19,10 +20,10 @@ class GanModel(BaseModel):
         else:
             self.model_names = ['G']
 
-        self.netG = networks.define_G()
+        self.netG = networks.define_G().to(self.device)
 
         if self.isTrain:
-            self.netD = networks.define_D()
+            self.netD = networks.define_D().to(self.device)
 
         if self.isTrain:
             self.fake_imgs = ImagePool(opt.pool_size)
@@ -45,26 +46,28 @@ class GanModel(BaseModel):
 
     # Image input
     def set_image_input(self, real):
-        self.real = real
+        self.real = real.to(self.device)
 
     # forward to be performed also at test time
     def forward(self):
-        self.fake = self.netG(self.noise)
+        self.fake = self.netG(self.noise.to(self.device))
 
     def backward_D(self, netD, real, fake):
         _, pred_real = netD(real)
-        loss_D_real = self.criterionGAN(pred_real, torch.ones(pred_real.shape[0])*self.real_label)
+        loss_D_real = self.criterionGAN(pred_real, torch.ones(pred_real.shape[0]).to(self.device)*self.real_label)
 
         _, pred_fake = netD(fake.detach())
-        loss_D_fake = self.criterionGAN(pred_fake, torch.ones(pred_fake.shape[0])*self.fake_label)
+        loss_D_fake = self.criterionGAN(pred_fake, torch.ones(pred_fake.shape[0]).to(self.device)*self.fake_label)
 
         loss_D = (loss_D_real + loss_D_fake) * 0.5
+        self.loss_GAN += loss_D
         loss_D.backward()
         return loss_D
 
     def backward_G(self):
-        self.lossG_gan = self.criterionGAN(self.netD(self.fake),torch.ones(self.fake.shape[0])*self.real_label)
-        self.lossG = self.lossG_gan
+        lossG_gan = self.criterionGAN(self.netD(self.fake)[1],torch.ones(self.fake.shape[0]).to(self.device)*self.real_label)
+        self.lossG = lossG_gan
+        self.loss_GAN = self.lossG
         self.lossG.backward()
 
     def optimize_parameters(self):

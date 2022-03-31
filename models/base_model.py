@@ -10,7 +10,7 @@ class BaseModel(ABC):
         self.opt = opt
         self.gpu_ids = opt.gpu_ids
         self.isTrain = opt.isTrain
-        self.device = torch.device('cuda:{}'.format(self.gpu_ids[0])) if self.gpu_ids[0] else torch.device('cpu')
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.save_dir = os.path.join(opt.checkpoints_dir, opt.name)
         if opt.preprocess != 'scale_width':
             torch.backends.cudnn.benchmark = True
@@ -96,12 +96,7 @@ class BaseModel(ABC):
                 save_filename = '%s_net_%s.pth' % (epoch, name)
                 save_path = os.path.join(self.save_dir, save_filename)
                 net = getattr(self, 'net' + name)
-
-                if len(self.gpu_ids) > 0 and torch.cuda.is_available():
-                    torch.save(net.module.cpu().state_dict(), save_path)
-                    net.cuda(self.gpu_ids[0])
-                else:
-                    torch.save(net.cpu().state_dict(), save_path)
+                torch.save(net.state_dict(), save_path)
 
     def __patch_instance_norm_state_dict(self, state_dict, module, keys, i=0):
         key = keys[i]
