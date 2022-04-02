@@ -101,7 +101,7 @@ class BaseModel(ABC):
     def __patch_instance_norm_state_dict(self, state_dict, module, keys, i=0):
         key = keys[i]
         if i + 1 == len(keys):
-            if module.__class__.__name__.statswith('InstanceNorm') and (key == 'num_batches_tracked'):
+            if module.__class__.__name__.startswith('InstanceNorm') and (key == 'num_batches_tracked'):
                 state_dict.pop('.'.join(keys))
         else:
             self.__patch_instance_norm_state_dict(state_dict, getattr(module, key), keys, i + 1)

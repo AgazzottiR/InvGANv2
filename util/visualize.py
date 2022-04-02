@@ -17,7 +17,7 @@ else:
     VisdomExceptionBase = ConnectionError
 
 
-def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_wandb=False):
+def save_images(webpage, visuals, image_path, aspect_ratio=1.0, width=256, use_wandb=True):
     """Save images to the disk.
 
     Parameters:
@@ -225,7 +225,10 @@ class Visualizer():
         """
         if not hasattr(self, 'plot_data'):
             self.plot_data = {'X': [], 'Y': [], 'legend': list(losses.keys())}
-        self.plot_data['X'].append(epoch + counter_ratio)
+        if len(self.plot_data['X']) > 0 and self.plot_data['X'][-1] > (epoch + counter_ratio):
+            self.plot_data['X'].append(self.plot_data['X'][-1] +(epoch + counter_ratio))
+        else:
+            self.plot_data['X'].append(epoch + counter_ratio)
         self.plot_data['Y'].append([losses[k] for k in self.plot_data['legend']])
         try:
             self.vis.line(

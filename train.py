@@ -40,9 +40,9 @@ if __name__ == "__main__":
             if total_iters % opt.print_freq == 0:
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
-                visualizer.print_current_losses(total_iters, epoch_iter, losses,t_comp, t_data)
+                visualizer.print_current_losses(epoch, epoch_iter, losses,t_comp, t_data)
                 if opt.display_id > 0:
-                    visualizer.plot_current_losses(total_iters, float(epoch_iter) / data_size, losses)
+                    visualizer.plot_current_losses(epoch, float(epoch_iter) / data_size, losses)
             if total_iters % opt.save_latest_freq == 0:
                 print("Saving checkpoint")
                 save_suffix = 'iter_%d' % total_iters if opt.save_by_iter else 'latest'
