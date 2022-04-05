@@ -83,6 +83,8 @@ def define_G():
 def define_D():
     return Discriminator()
 
+def define_M():
+    return MappingNetwork()
 
 class MappingNetwork(nn.Module):
     def __init__(self):
@@ -96,7 +98,7 @@ class MappingNetwork(nn.Module):
         )
 
     def forward(self, x):
-        return self.main(x)
+        return self.main(x)[:,:,None,None]
 
 
 class Generator(nn.Module):

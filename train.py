@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
             total_iters += opt.batch_size
             epoch_iter += opt.batch_size
-            model.set_input(torch.randn((opt.batch_size, opt.latent_size,1,1),device=device))
+            model.set_input(torch.randn((opt.batch_size, opt.latent_size),device=device))
             model.set_image_input(data[0])
             model.optimize_parameters()
 
