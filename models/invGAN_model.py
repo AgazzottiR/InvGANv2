@@ -116,24 +116,34 @@ class InvGanModel(BaseModel):
         self.loss_GAN = self.loss_GAN_G
         self.loss_GAN_G.backward()
 
+    def free_optimizers(self):
+        for optim in self.optimizers:
+            optim.zero_grad()
+        self.netD.zero_grad()
+        self.netM.zero_grad()
+        self.netG.zero_grad()
+    def step_all(self):
+        for optim in self.optimizers:
+            optim.step()
+
     def optimize_parameters(self):
         # forward
         self.forward()
         # Train discriminator
         self.set_requires_grad([self.netG, self.netM], False)
         self.set_requires_grad([self.netD], True)
-        self.optimizer_D.zero_grad()
+        self.free_optimizers()
         self.backward_D()
         self.optimizer_D.step()
         # Train Mapping
         self.set_requires_grad([self.netD, self.netG], False)
         self.set_requires_grad([self.netM], True)
-        self.optimizer_M.zero_grad()
+        self.free_optimizers()
         self.backward_M()
         self.optimizer_M.step()
         # Train generator
         self.set_requires_grad([self.netD, self.netM], False)  # Setting discriminator to no grad
         self.set_requires_grad([self.netG], True)
-        self.optimizer_G.zero_grad()
+        self.free_optimizers()
         self.backward_G()
         self.optimizer_G.step()
