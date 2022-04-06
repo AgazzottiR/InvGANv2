@@ -9,6 +9,7 @@ from util.visualize import save_images
 from util import html
 import torch
 import matplotlib.pyplot as plt
+import torchvision.utils as vutils
 
 try:
     import wandb
@@ -55,6 +56,8 @@ if __name__ == '__main__':
         model.set_input(data)  # unpack data from data loader
         model.test()  # run inference
         visuals = model.get_current_visuals()
+        plt.imshow(np.transpose(vutils.make_grid(visuals['fake']),(1,2,0)))
+        plt.show()
         img_path = model.get_image_paths()
         save_images(webpage, visuals, img_path, aspect_ratio=opt.aspect_ratio, width=opt.display_winsize, use_wandb=opt.use_wandb)
     webpage.save()  # save the HTML

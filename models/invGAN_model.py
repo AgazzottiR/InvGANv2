@@ -99,20 +99,28 @@ class InvGanModel(BaseModel):
         self.loss_GAN_D.backward()
 
     def backward_M(self):
-        self.loss_L2_MN = self.criterionL2(self.w.reshape(self.w.shape[0:2]), self.output_w_fake)
-        self.loss_MMD_MN = self.criterionMMD(self.w.reshape(self.w.shape[0:2]), self.output_w_real)
+        self.w = self.netM(self.noise)
+        self.w_rec, _ = self.netD(self.netG(self.w))
+        self.w_real_rec,_ = self.netD(self.real)
+        self.loss_L2_MN = self.criterionL2(self.w.reshape(self.w.shape[0:2]), self.w_rec.reshape(self.w_rec.shape[0:2]))
+        self.loss_MMD_MN = self.criterionMMD(self.w.reshape(self.w.shape[0:2]), self.w_real_rec)
         self.loss_MN = self.loss_MMD_MN + self.loss_L2_MN
         self.loss_MN.backward()
 
     def backward_G(self):
-        self.w_no_grad_after_disc = self.output_w_real.detach()
-        self.fake_2 = self.netG(self.w_no_grad_after_disc[:, :, None, None])
-        self.out_w_2, _ = self.netD(self.fake_2)
+        self.w_real, _ = self.netD(self.real)
+        self.real_rec = self.netG(self.w_real[:,:,None,None])
+        self.w_real_rec,_ = self.netD(self.real_rec)
+
+        self.fm, _ = self.netD.forward_feature(self.real)
+        self.fm_rec, _ = self.netD.forward_feature(self.netG(self.fm[-2][:,:,None,None]))
+
         lossG_gan = self.criterionGAN(self.netD(self.fake)[1], torch.ones(self.fake.shape[0], requires_grad=True).to(
             self.device) * self.real_label)
-        if self.previous_batch is not None:
-            self.loss_L2_GEN = self.criterionL2(self.out_w_2, self.w_no_grad_after_disc)
-        self.loss_GAN_G = lossG_gan + self.loss_L2_GEN
+        self.loss_FL = self.criterionL2(self.fm[-4], self.fm_rec[-4])
+        self.loss_L2_GEN = self.criterionL2(self.w_real_rec, self.w_real)
+
+        self.loss_GAN_G = lossG_gan + self.loss_L2_GEN + self.loss_FL
         self.loss_GAN = self.loss_GAN_G
         self.loss_GAN_G.backward()
 
@@ -122,6 +130,7 @@ class InvGanModel(BaseModel):
         self.netD.zero_grad()
         self.netM.zero_grad()
         self.netG.zero_grad()
+
     def step_all(self):
         for optim in self.optimizers:
             optim.step()

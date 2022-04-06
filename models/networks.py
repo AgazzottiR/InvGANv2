@@ -167,7 +167,7 @@ class Discriminator(nn.Module):
                 fm_names.append(str(layer))
         fm.append(fm[-1][:, 0:100])
         fm_names.append("Z_output")
-        fm.append(self.sigm(fm[-2][:, -1]))
+        fm.append(self.sigm(fm[-1][:, -1]))
         fm_names.append("BCE_output")
         return fm, fm_names
 
