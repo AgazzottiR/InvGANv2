@@ -9,7 +9,7 @@ import torch.nn as nn
 class InvGanModel(BaseModel):
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
-        self.loss_name = ['GAN','GAN_D','GAN_G', 'L2_DISC', 'L2_GEN', 'MMD', 'FL', 'L2_MN', 'MMD_MN']
+        self.loss_name = ['GAN', 'GAN_D', 'GAN_G', 'L2_DISC', 'L2_GEN', 'MMD', 'FL', 'L2_MN', 'MMD_MN']
         self.loss_GAN_D = 0
         self.loss_GAN_G = 0
         self.loss_GAN = 0
@@ -58,7 +58,6 @@ class InvGanModel(BaseModel):
     def set_image_input(self, real):
         self.real = real.to(self.device)
 
-
     def forward(self):
         self.w = self.netM(self.noise.to(self.device))
         if self.isTrain:
@@ -93,19 +92,19 @@ class InvGanModel(BaseModel):
         self.loss_L2_DISC = self.criterionL2(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_fake)
         self.loss_MMD = self.criterionMMD(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_real)
 
-        self.loss_GAN_D = (loss_D_real + loss_D_fake) * 0.5 # + self.loss_MMD + self.loss_L2_DISC
+        self.loss_GAN_D = (loss_D_real + loss_D_fake) * 0.5  # + self.loss_MMD + self.loss_L2_DISC
         self.loss_GAN += self.loss_GAN_D
         self.loss_GAN_D.backward()
 
     def backward_M(self):
-        self.loss_L2_MN = self.criterionL2(self.w.reshape(self.w.shape[0:2]), self.output_w_fake.detach())
-        self.loss_MMD_MN = self.criterionMMD(self.w.reshape(self.w.shape[0:2]), self.output_w_real.detach())
+        self.loss_L2_MN = self.criterionL2(self.w.reshape(self.w.shape[0:2]), self.output_w_fake)
+        self.loss_MMD_MN = self.criterionMMD(self.w.reshape(self.w.shape[0:2]), self.output_w_real)
         self.loss_MN = self.loss_MMD_MN + self.loss_L2_MN
-        # self.loss_MN.backward()
+        self.loss_MN.backward()
 
     def backward_G(self):
         self.w_no_grad_after_disc = self.output_w_real.detach()
-        self.fake_2 = self.netG(self.w_no_grad_after_disc[:,:,None,None])
+        self.fake_2 = self.netG(self.w_no_grad_after_disc[:, :, None, None])
         self.out_w_2, _ = self.netD(self.fake_2)
         lossG_gan = self.criterionGAN(self.netD(self.fake)[1], torch.ones(self.fake.shape[0], requires_grad=True).to(
             self.device) * self.real_label)
