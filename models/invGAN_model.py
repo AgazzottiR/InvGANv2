@@ -19,6 +19,7 @@ class InvGanModel(BaseModel):
         self.loss_FL = 0
         self.loss_L2_MN = 0
         self.loss_MMD_MN = 0
+        self.loss_MN = 0
         self.previous_batch = None
 
         self.real_label = 1.
@@ -76,11 +77,12 @@ class InvGanModel(BaseModel):
             self.previous_batch = self.previous_batch[torch.randperm(self.previous_batch.shape[0])]
             self.fake = torch.cat((self.w_no_grad[:self.fake.shape[0] // 2],
                                    self.previous_batch[self.fake.shape[:self.fake.shape[0] // 2]]), dim=0)
+            if self.previous_batch.shape[0] > self.output_w_real.shape[0]*5: # Clean previous batch
+                self.previous_batch = self.previous_batch[:self.output_w_real.shape[0]]
         except:
             pass
 
     def backward_D(self):
-
         self.output_w_real, self.pred_real = self.netD(self.real)
         loss_D_real = self.criterionGAN(self.pred_real, torch.ones(self.pred_real.shape[0], requires_grad=True).to(
             self.device) * self.real_label)
@@ -92,8 +94,8 @@ class InvGanModel(BaseModel):
         self.loss_L2_DISC = self.criterionL2(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_fake)
         self.loss_MMD = self.criterionMMD(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_real)
 
-        self.loss_GAN_D = (loss_D_real + loss_D_fake) * 0.5  # + self.loss_MMD + self.loss_L2_DISC
-        self.loss_GAN += self.loss_GAN_D
+        self.loss_GAN_D = (loss_D_real + loss_D_fake) * 0.5 + self.loss_MMD + self.loss_L2_DISC
+        self.loss_GAN += (loss_D_real + loss_D_fake) * 0.5
         self.loss_GAN_D.backward()
 
     def backward_M(self):
