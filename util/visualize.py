@@ -3,6 +3,9 @@ import os
 import sys
 import ntpath
 import time
+
+import torchvision.utils
+
 from . import util, html
 from subprocess import Popen, PIPE
 
@@ -215,7 +218,7 @@ class Visualizer():
                 webpage.add_images(ims, txts, links, width=self.win_size)
             webpage.save()
 
-    def plot_current_losses(self, epoch, counter_ratio, losses):
+    def plot_current_losses(self, epoch, counter_ratio, losses,optimizers=[]):
         """display the current losses on visdom display: dictionary of error labels and values
 
         Parameters:
@@ -243,6 +246,12 @@ class Visualizer():
         except VisdomExceptionBase:
             self.create_visdom_connections()
         if self.use_wandb:
+            optims = dict()
+            if len(optimizers) > 0:
+                optims['lr_netG'] = optimizers[0].param_groups[0]['lr']
+                optims['lr_netD'] = optimizers[1].param_groups[0]['lr']
+                optims['lr_netM'] = optimizers[2].param_groups[0]['lr']
+            self.wandb_run.log(optims)
             self.wandb_run.log(losses)
 
     # losses: same format as |losses| of plot_current_losses
@@ -263,3 +272,10 @@ class Visualizer():
         print(message)  # print the message
         with open(self.log_name, "a") as log_file:
             log_file.write('%s\n' % message)  # save the message
+
+    def plot_images(self, img, img_rec):
+        if self.opt.use_wandb:
+            img = np.transpose(torchvision.utils.make_grid(img).cpu(),(1,2,0))
+            img_rec = np.transpose(torchvision.utils.make_grid(img_rec).cpu(),(1,2,0))
+            wandb.log({"Images": wandb.Image(img.numpy())})
+            wandb.log({"Images_rec": wandb.Image(img_rec.numpy())})

@@ -9,7 +9,7 @@ import torch.nn as nn
 class InvGanModel(BaseModel):
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
-        self.loss_name = ['GAN', 'GAN_D', 'GAN_G', 'L2_DISC', 'L2_GEN', 'MMD', 'FL', 'L2_MN', 'MMD_MN']
+        self.loss_name = ['GAN', 'GAN_D', 'GAN_G', 'L2_DISC', 'L2_GEN', 'MMD', 'FL', 'L2_MN', 'MMD_MN', 'GAN_MN']
         self.loss_GAN_D = 0
         self.loss_GAN_G = 0
         self.loss_GAN = 0
@@ -19,8 +19,10 @@ class InvGanModel(BaseModel):
         self.loss_FL = 0
         self.loss_L2_MN = 0
         self.loss_MMD_MN = 0
+        self.loss_GAN_MN = 0
         self.loss_MN = 0
         self.previous_batch = None
+        self.fixed_noise = torch.randn((64, 512)).to(self.device)
 
         self.real_label = 1.
         self.fake_label = 0.
@@ -77,7 +79,7 @@ class InvGanModel(BaseModel):
             self.previous_batch = self.previous_batch[torch.randperm(self.previous_batch.shape[0])]
             self.fake = torch.cat((self.w_no_grad[:self.fake.shape[0] // 2],
                                    self.previous_batch[self.fake.shape[:self.fake.shape[0] // 2]]), dim=0)
-            if self.previous_batch.shape[0] > self.output_w_real.shape[0]*5: # Clean previous batch
+            if self.previous_batch.shape[0] > self.output_w_real.shape[0] * 5:  # Clean previous batch
                 self.previous_batch = self.previous_batch[:self.output_w_real.shape[0]]
         except:
             pass
@@ -94,34 +96,44 @@ class InvGanModel(BaseModel):
         self.loss_L2_DISC = self.criterionL2(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_fake)
         self.loss_MMD = self.criterionMMD(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_real)
 
-        self.loss_GAN_D = (loss_D_real + loss_D_fake) * 0.5 + self.loss_MMD + self.loss_L2_DISC
-        self.loss_GAN += (loss_D_real + loss_D_fake) * 0.5
+        self.loss_GAN_D = ((loss_D_real + loss_D_fake) * 0.5 + self.loss_MMD + self.loss_L2_DISC)
+        self.loss_GAN = (loss_D_real + loss_D_fake) * 0.5
         self.loss_GAN_D.backward()
 
-    def backward_M(self):
+    def backward_M(self):  # cambia con anche loss generatore
         self.w = self.netM(self.noise)
-        self.w_rec, _ = self.netD(self.netG(self.w))
-        self.w_real_rec,_ = self.netD(self.real)
+        self.fake_rec = self.netG(self.w)
+        self.w_rec, _ = self.netD(self.fake_rec)
+        self.w_real_rec, _ = self.netD(self.real)
+        self.loss_GAN_MN = self.criterionGAN(self.netD(self.fake_rec)[1],
+                                             torch.ones(self.fake.shape[0], requires_grad=True).to(
+                                                 self.device) * self.real_label)
         self.loss_L2_MN = self.criterionL2(self.w.reshape(self.w.shape[0:2]), self.w_rec.reshape(self.w_rec.shape[0:2]))
         self.loss_MMD_MN = self.criterionMMD(self.w.reshape(self.w.shape[0:2]), self.w_real_rec)
-        self.loss_MN = self.loss_MMD_MN + self.loss_L2_MN
+        self.loss_MN = self.loss_MMD_MN + self.loss_L2_MN + self.loss_GAN_MN
         self.loss_MN.backward()
+
+    def get_images(self):
+        with torch.no_grad():
+            img = self.netG(self.netM(self.fixed_noise))
+            img_rec = self.netG(self.netD(img)[0][:, :, None, None])
+        return img, img_rec
 
     def backward_G(self):
         self.w_real, _ = self.netD(self.real)
-        self.real_rec = self.netG(self.w_real[:,:,None,None])
-        self.w_real_rec,_ = self.netD(self.real_rec)
+        self.real_rec = self.netG(self.w_real[:, :, None, None])
+        self.w_real_rec, _ = self.netD(self.real_rec)
 
         self.fm, _ = self.netD.forward_feature(self.real)
-        self.fm_rec, _ = self.netD.forward_feature(self.netG(self.fm[-2][:,:,None,None]))
+        self.fm_rec, _ = self.netD.forward_feature(self.netG(self.fm[-2][:, :, None, None]))
 
         lossG_gan = self.criterionGAN(self.netD(self.fake)[1], torch.ones(self.fake.shape[0], requires_grad=True).to(
             self.device) * self.real_label)
         self.loss_FL = self.criterionL2(self.fm[-4], self.fm_rec[-4])
         self.loss_L2_GEN = self.criterionL2(self.w_real_rec, self.w_real)
 
-        self.loss_GAN_G = lossG_gan + self.loss_L2_GEN + self.loss_FL
-        self.loss_GAN = self.loss_GAN_G
+        self.loss_GAN_G = lossG_gan + self.loss_L2_GEN + 3 * self.loss_FL
+        self.loss_GAN += self.loss_GAN_G
         self.loss_GAN_G.backward()
 
     def free_optimizers(self):

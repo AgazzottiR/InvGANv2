@@ -2,6 +2,9 @@ import os
 import torch
 from collections import OrderedDict
 from abc import ABC, abstractmethod
+
+from torch.optim import lr_scheduler
+
 from . import networks
 
 
@@ -36,13 +39,18 @@ class BaseModel(ABC):
     @abstractmethod
     def optimize_parameters(self):
         pass
+
     @abstractmethod
     def set_image_input(self, input):
         pass
 
     def setup(self, opt):
+        lr = [getattr(opt, f'lr_policy_{n}') for n in ['G', 'D', 'M']]
+        print("--------Setup learning rate schedulers----------")
+        [print(f"Setting for net_{n} lr scheduler to {v}") for n, v in zip(['G', 'D', 'M'], lr)]
+        print("------------------------------------------------")
         if self.isTrain:
-            self.schedulers = [networks.get_scheduler(optimizer, opt) for optimizer in self.optimizers]
+            self.schedulers = [networks.get_scheduler(optimizer, n, opt) for optimizer, n in zip(self.optimizers, lr)]
         if not self.isTrain or opt.continue_train:
             load_suffix = 'iter_%d' % opt.load_iter if opt.load_iter > 0 else opt.epoch
             self.load_networks(load_suffix)
@@ -66,15 +74,22 @@ class BaseModel(ABC):
         return self.image_paths
 
     def update_learning_rate(self):
-        old_lr = self.optimizers[0].param_groups[0]['lr']
+        old_lr_G = self.optimizers[0].param_groups[0]['lr']
+        old_lr_D = self.optimizers[1].param_groups[0]['lr']
+        old_lr_M = self.optimizers[2].param_groups[0]['lr']
         for scheduler in self.schedulers:
-            if self.opt.lr_policy == 'plateau':
+            if isinstance(scheduler, lr_scheduler.ReduceLROnPlateau):
                 scheduler.step(self.metrics)
             else:
                 scheduler.step()
 
-        lr = self.optimizers[0].param_groups[0]['lr']
-        print('learning rate %.7f -> %.7f' % (old_lr, lr))
+        lr_G = self.optimizers[0].param_groups[0]['lr']
+        lr_D = self.optimizers[1].param_groups[0]['lr']
+        lr_M = self.optimizers[2].param_groups[0]['lr']
+
+        print('learning rate generator %.7f -> %.7f' % (old_lr_G, lr_G))
+        print('learning rate discriminator %.7f -> %.7f' % (old_lr_D, lr_D))
+        print('learning rate mapping network %.7f -> %.7f' % (old_lr_M, lr_M))
 
     def get_current_visuals(self):
         visual_ret = OrderedDict()

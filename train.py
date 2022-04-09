@@ -1,6 +1,7 @@
 import time
 
 import torch
+import wandb
 
 from options.train_options import TrainOptions
 from models import create_model
@@ -16,6 +17,7 @@ if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     model = create_model(opt)
+    model.load_networks('latest')
     model.setup(opt)
     visualizer = Visualizer(opt)
     total_iters = 0
@@ -38,11 +40,13 @@ if __name__ == "__main__":
             model.optimize_parameters()
 
             if total_iters % opt.print_freq == 0:
+                img,img_rec = model.get_images()
+                visualizer.plot_images(img,img_rec)
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
                 visualizer.print_current_losses(epoch, epoch_iter, losses,t_comp, t_data)
                 if opt.display_id > 0:
-                    visualizer.plot_current_losses(epoch, float(epoch_iter) / data_size, losses)
+                    visualizer.plot_current_losses(epoch, float(epoch_iter) / data_size, losses, model.optimizers)
             if total_iters % opt.save_latest_freq == 0:
                 print("Saving checkpoint")
                 save_suffix = 'iter_%d' % total_iters if opt.save_by_iter else 'latest'
