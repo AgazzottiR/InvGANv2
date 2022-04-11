@@ -10,3 +10,5 @@ params
 *.pth
 checkpoints
 experiment_name
+data
+checkpoints
