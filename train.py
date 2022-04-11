@@ -17,7 +17,10 @@ if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     model = create_model(opt)
-    model.load_networks('latest')
+    try:
+        model.load_networks('latest')
+    except:
+        print("Default init for parameters")
     model.setup(opt)
     visualizer = Visualizer(opt)
     total_iters = 0
