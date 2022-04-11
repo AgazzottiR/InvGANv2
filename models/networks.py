@@ -88,6 +88,7 @@ def define_D():
 def define_M():
     return MappingNetwork()
 
+
 class MappingNetwork(nn.Module):
     def __init__(self):
         super(MappingNetwork, self).__init__()
@@ -104,7 +105,7 @@ class MappingNetwork(nn.Module):
 
 
 class Generator(nn.Module):
-    def __init__(self, input_nc=100, output_nc=3):
+    def __init__(self, input_nc=100, output_nc=1):
         super(Generator, self).__init__()
         self.main = nn.Sequential(
             nn.ConvTranspose2d(input_nc, 512, 4, 2, padding=1),
@@ -131,7 +132,7 @@ class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
         self.main = nn.Sequential(
-            nn.Conv2d(3, 32, 5, 2, padding=1),
+            nn.Conv2d(1, 32, 5, 2, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.Conv2d(32, 64, 5, 2, padding=1),

@@ -80,13 +80,13 @@ class Visualizer():
         self.use_wandb = opt.use_wandb
         self.current_epoch = 0
         self.ncols = opt.display_ncols
-
+        '''
         if self.display_id > 0:  # connect to a visdom server given <display_port> and <display_server>
             import visdom
             self.vis = visdom.Visdom(server=opt.display_server, port=opt.display_port, env=opt.display_env)
             if not self.vis.check_connection():
                 self.create_visdom_connections()
-
+        '''
         if self.use_wandb:
             wandb.login(key='bb1abfc16a616453716180cdc3306cf7ce03d891')
             wandb.init(project="InvGAN", entity="riccardoagazzotti")
@@ -97,7 +97,7 @@ class Visualizer():
             }
             self.wandb_run = wandb.init(project='InvGAN', name=opt.name,config=opt) if not wandb.run else wandb.run
             self.wandb_run._label(repo='InvGAN')
-
+        '''
         if self.use_html:  # create an HTML object at <checkpoints_dir>/web/; images will be saved under <checkpoints_dir>/web/images/
             self.web_dir = os.path.join(opt.checkpoints_dir, opt.name, 'web')
             self.img_dir = os.path.join(self.web_dir, 'images')
@@ -108,7 +108,7 @@ class Visualizer():
         with open(self.log_name, "a") as log_file:
             now = time.strftime("%c")
             log_file.write('================ Training Loss (%s) ================\n' % now)
-
+        '''
     def reset(self):
         """Reset the self.saved status"""
         self.saved = False
@@ -121,13 +121,13 @@ class Visualizer():
         Popen(cmd, shell=True, stdout=PIPE, stderr=PIPE)
 
     def display_current_results(self, visuals, epoch, save_result):
-        """Display current results on visdom; save current results to an HTML file.
+        '''Display current results on visdom; save current results to an HTML file.
 
         Parameters:
             visuals (OrderedDict) - - dictionary of images to display or save
             epoch (int) - - the current epoch
             save_result (bool) - - if save the current results to an HTML file
-        """
+
         if self.display_id > 0:  # show images in the browser using visdom
             ncols = self.ncols
             if ncols > 0:  # show all the images in one visdom panel
@@ -177,6 +177,7 @@ class Visualizer():
                         idx += 1
                 except VisdomExceptionBase:
                     self.create_visdom_connections()
+        '''
 
         if self.use_wandb:
             columns = [key for key, _ in visuals.items()]
@@ -194,7 +195,7 @@ class Visualizer():
                 self.current_epoch = epoch
                 result_table.add_data(*table_row)
                 self.wandb_run.log({"Result": result_table})
-
+        '''
         if self.use_html and (save_result or not self.saved):  # save images to an HTML file if they haven't been saved.
             self.saved = True
             # save images to the disk
@@ -217,7 +218,7 @@ class Visualizer():
                     links.append(img_path)
                 webpage.add_images(ims, txts, links, width=self.win_size)
             webpage.save()
-
+        '''
     def plot_current_losses(self, epoch, counter_ratio, losses, loss_weights,optimizers=[],):
         """display the current losses on visdom display: dictionary of error labels and values
 
@@ -226,6 +227,7 @@ class Visualizer():
             counter_ratio (float) -- progress (percentage) in the current epoch, between 0 to 1
             losses (OrderedDict)  -- training losses stored in the format of (name, float) pairs
         """
+        '''
         if not hasattr(self, 'plot_data'):
             self.plot_data = {'X': [], 'Y': [], 'legend': list(losses.keys())}
         if len(self.plot_data['X']) > 0 and self.plot_data['X'][-1] > (epoch + counter_ratio):
@@ -245,6 +247,7 @@ class Visualizer():
                 win=self.display_id)
         except VisdomExceptionBase:
             self.create_visdom_connections()
+        '''
         if self.use_wandb:
             optims = dict()
             if len(optimizers) > 0:
@@ -271,8 +274,10 @@ class Visualizer():
             message += '%s: %.3f ' % (k, v)
 
         print(message)  # print the message
-        with open(self.log_name, "a") as log_file:
-            log_file.write('%s\n' % message)  # save the message
+
+       # with open(self.log_name, "a") as log_file:
+       #     log_file.write('%s\n' % message)  # save the message
+
 
     def plot_images(self, img, img_rec):
         if self.opt.use_wandb:
