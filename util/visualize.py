@@ -218,7 +218,7 @@ class Visualizer():
                 webpage.add_images(ims, txts, links, width=self.win_size)
             webpage.save()
 
-    def plot_current_losses(self, epoch, counter_ratio, losses,optimizers=[]):
+    def plot_current_losses(self, epoch, counter_ratio, losses, loss_weights,optimizers=[],):
         """display the current losses on visdom display: dictionary of error labels and values
 
         Parameters:
@@ -253,6 +253,7 @@ class Visualizer():
                 optims['lr_netM'] = optimizers[2].param_groups[0]['lr']
             self.wandb_run.log(optims)
             self.wandb_run.log(losses)
+            self.wandb_run.log(loss_weights)
 
     # losses: same format as |losses| of plot_current_losses
     def print_current_losses(self, epoch, iters, losses, t_comp, t_data):

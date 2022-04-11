@@ -31,9 +31,9 @@ def get_scheduler(optimizer, lr_policy,opt):
 
         scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lamda_rule)
     elif lr_policy == 'step':
-        scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[n for n in range(0, opt.n_epochs, 15)], gamma=0.1)
-    elif lr_policy == 'setp_grow':
-        scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[n for n in range(0, opt.n_epochs, 15)], gamma=2)
+        scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[n for n in range(15, opt.n_epochs, 30)], gamma=1)
+    elif lr_policy == 'step_grow':
+        scheduler = lr_scheduler.MultiStepLR(optimizer, milestones=[n for n in range(15, opt.n_epochs, 30)], gamma=1)
     elif lr_policy == 'plateau':
         scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, threshold=0.01, patience=5)
     elif lr_policy == 'cosine':

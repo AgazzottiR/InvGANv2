@@ -9,18 +9,21 @@ import torch.nn as nn
 class InvGanModel(BaseModel):
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
-        self.loss_name = ['GAN', 'GAN_D', 'GAN_G', 'L2_DISC', 'L2_GEN', 'MMD', 'FL', 'L2_MN', 'MMD_MN', 'GAN_MN']
+        self.loss_name = ['GAN', 'GAN_D', 'GAN_GEN', 'L2_D', 'L2_GEN', 'MMD_D', 'FL_GEN', 'L2_MN', 'MMD_MN', 'GAN_MN', 'D',
+                          'G']
         self.loss_GAN_D = 0
-        self.loss_GAN_G = 0
+        self.loss_GAN_GEN = 0
         self.loss_GAN = 0
-        self.loss_L2_DISC = 0
+        self.loss_L2_D = 0
         self.loss_L2_GEN = 0
-        self.loss_MMD = 0
-        self.loss_FL = 0
+        self.loss_MMD_D = 0
+        self.loss_FL_GEN = 0
         self.loss_L2_MN = 0
         self.loss_MMD_MN = 0
         self.loss_GAN_MN = 0
         self.loss_MN = 0
+        self.loss_D = 0
+        self.loss_G = 0
         self.previous_batch = None
         self.fixed_noise = torch.randn((64, 512)).to(self.device)
 
@@ -52,7 +55,22 @@ class InvGanModel(BaseModel):
             self.optimizers.append(self.optimizer_D)
             self.optimizers.append(self.optimizer_M)
 
-    # Latent input
+            self.loss_weights = dict()
+            for ln in self.loss_name:
+                ln = ln + '_W'
+                if ln.startswith('_'):
+                    continue
+                self.loss_weights[ln] = 1.
+
+    def update_weights(self,mf_d=3):
+        for w in self.loss_weights:
+            mf = mf_d
+            if '_MN' in w or '_GEN' in w:
+                if self.loss_weights[w] > 10:
+                    mf = 1
+                self.loss_weights[w] *= mf
+                print(f"Updating loss {w.strip('_W')} multiplying by a factor {mf}: {self.loss_weights[w]/mf} --> {self.loss_weights[w]}")
+
     def set_input(self, input):
         # Evenutual input preprocessing
         self.noise = input.to(self.device)
@@ -93,12 +111,13 @@ class InvGanModel(BaseModel):
         loss_D_fake = self.criterionGAN(self.pred_fake, torch.ones(self.pred_fake.shape[0], requires_grad=True).to(
             self.device) * self.fake_label)
 
-        self.loss_L2_DISC = self.criterionL2(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_fake)
-        self.loss_MMD = self.criterionMMD(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_real)
+        self.loss_L2_D = self.criterionL2(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_fake)  * self.loss_weights['L2_D_W']
+        self.loss_MMD_D = self.criterionMMD(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_real) * self.loss_weights['MMD_D_W']
 
-        self.loss_GAN_D = ((loss_D_real + loss_D_fake) * 0.5 + self.loss_MMD + self.loss_L2_DISC)
-        self.loss_GAN = (loss_D_real + loss_D_fake) * 0.5
-        self.loss_GAN_D.backward()
+        self.loss_GAN_D = (loss_D_real + loss_D_fake) * 0.5 * self.loss_weights['GAN_D_W']
+        self.loss_D = self.loss_GAN_D + self.loss_MMD_D + self.loss_L2_D
+        self.loss_GAN = (loss_D_real + loss_D_fake) * 0.5 * self.loss_weights['GAN_D_W']
+        self.loss_D.backward()
 
     def backward_M(self):  # cambia con anche loss generatore
         self.w = self.netM(self.noise)
@@ -107,9 +126,12 @@ class InvGanModel(BaseModel):
         self.w_real_rec, _ = self.netD(self.real)
         self.loss_GAN_MN = self.criterionGAN(self.netD(self.fake_rec)[1],
                                              torch.ones(self.fake.shape[0], requires_grad=True).to(
-                                                 self.device) * self.real_label)
-        self.loss_L2_MN = self.criterionL2(self.w.reshape(self.w.shape[0:2]), self.w_rec.reshape(self.w_rec.shape[0:2]))
-        self.loss_MMD_MN = self.criterionMMD(self.w.reshape(self.w.shape[0:2]), self.w_real_rec)
+                                                 self.device) * self.real_label) * self.loss_weights['GAN_MN_W']
+        self.loss_L2_MN = self.criterionL2(self.w.reshape(self.w.shape[0:2]),
+                                           self.w_rec.reshape(self.w_rec.shape[0:2])) * self.loss_weights['L2_MN_W']
+        self.loss_MMD_MN = self.criterionMMD(self.w.reshape(self.w.shape[0:2]), self.w_real_rec) * self.loss_weights[
+            'MMD_MN_W']
+
         self.loss_MN = self.loss_MMD_MN + self.loss_L2_MN + self.loss_GAN_MN
         self.loss_MN.backward()
 
@@ -127,14 +149,15 @@ class InvGanModel(BaseModel):
         self.fm, _ = self.netD.forward_feature(self.real)
         self.fm_rec, _ = self.netD.forward_feature(self.netG(self.fm[-2][:, :, None, None]))
 
-        lossG_gan = self.criterionGAN(self.netD(self.fake)[1], torch.ones(self.fake.shape[0], requires_grad=True).to(
-            self.device) * self.real_label)
-        self.loss_FL = self.criterionL2(self.fm[-4], self.fm_rec[-4])
-        self.loss_L2_GEN = self.criterionL2(self.w_real_rec, self.w_real)
+        self.loss_GAN_GEN = self.criterionGAN(self.netD(self.fake)[1],
+                                            torch.ones(self.fake.shape[0], requires_grad=True).to(
+                                                self.device) * self.real_label) * self.loss_weights['GAN_GEN_W']
+        self.loss_FL_GEN = self.criterionL2(self.fm[-4], self.fm_rec[-4]) * self.loss_weights['FL_GEN_W']
+        self.loss_L2_GEN = self.criterionL2(self.w_real_rec, self.w_real) * self.loss_weights['L2_GEN_W']
 
-        self.loss_GAN_G = lossG_gan + self.loss_L2_GEN + 3 * self.loss_FL
-        self.loss_GAN += self.loss_GAN_G
-        self.loss_GAN_G.backward()
+        self.loss_G = self.loss_GAN_GEN + self.loss_L2_GEN + self.loss_FL_GEN
+        self.loss_GAN += self.loss_GAN_GEN
+        self.loss_G.backward()
 
     def free_optimizers(self):
         for optim in self.optimizers:

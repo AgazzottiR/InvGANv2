@@ -43,6 +43,9 @@ class BaseModel(ABC):
     @abstractmethod
     def set_image_input(self, input):
         pass
+    @abstractmethod
+    def update_weights(self):
+        pass
 
     def setup(self, opt):
         lr = [getattr(opt, f'lr_policy_{n}') for n in ['G', 'D', 'M']]
