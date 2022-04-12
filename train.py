@@ -58,12 +58,12 @@ if __name__ == "__main__":
 
             iter_data_time = time.time()
 
-        model.update_learning_rate()
+        # model.update_learning_rate()
 
         if epoch % opt.save_epoch_freq == 0:
             model.save_networks('latest')
             model.save_networks(epoch)
         if (epoch + 1) % 10 == 0:
-            model.update_weights()
+            pass  # model.update_weights()
         print('End of epoch %d / %d \t Time Taken: %d sec' % (
-        epoch, opt.n_epochs + opt.n_epochs_decay, time.time() - epoch_start_time))
+            epoch, opt.n_epochs + opt.n_epochs_decay, time.time() - epoch_start_time))
