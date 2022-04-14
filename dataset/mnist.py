@@ -2,7 +2,7 @@ import torch
 import torchvision.datasets as dset
 import torchvision.transforms as transforms
 
-image_size = 32
+image_size = 28
 transform = transforms.Compose([
     transforms.Resize(image_size),
     transforms.CenterCrop(image_size),

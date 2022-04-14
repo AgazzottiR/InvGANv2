@@ -19,6 +19,7 @@ if __name__ == "__main__":
     model = create_model(opt)
     try:
         model.load_networks('latest')
+        print("Initialized with latest parameters found!!")
     except:
         print("No parameters found normal init")
     model.setup(opt)

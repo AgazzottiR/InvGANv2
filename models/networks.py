@@ -78,14 +78,16 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
 
 # input_nc, output_nc, nfg, netG='vanilla', norm='batch', use_dropout=False, init_type='normal', init_gain=0.02,
 #              gpu_ids=[]
-def define_G(ch):
+def define_G(ch,mnist=False):
+    if mnist:
+        return GeneratorMnist(output_nc=ch)
     return Generator(output_nc=ch)
 
 
 # input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=.02, gpu_ids=[]
-def define_D(ch,vanilla=False):
-    if vanilla:
-        return DiscriminatorVanilla(ic=ch)
+def define_D(ch,mnist=False):
+    if mnist:
+        return DiscriminatorMnist(ic=ch)
     return Discriminator(ic=ch)
 
 
@@ -132,28 +134,51 @@ class Generator(nn.Module):
         return self.main(x)
 
 
-class DiscriminatorVanilla(nn.Module):
-    def __init__(self, ic=1):
-        super(DiscriminatorVanilla, self).__init__()
-        self.main = nn.Sequential(
-            nn.Conv2d(ic, 32, 5, 2, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.Conv2d(32, 64, 5, 2, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, 5, 2, padding=1),
+class GeneratorMnist(nn.Module):
+    def __init__(self, input_nc=100, output_nc=1):
+        super(GeneratorMnist, self).__init__()
+        self.linear = nn.Sequential(
+            nn.Linear(100, 7 * 7 * 256),
+            nn.BatchNorm1d(7 * 7 * 256),
+            nn.ReLU())
+        self.conv = nn.Sequential(
+            nn.ConvTranspose2d(256, 128, 5, 1, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.Conv2d(128, 1, 5, 2, padding=1),
+            nn.ConvTranspose2d(128, 64, 5, 1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 32, 5, 1, padding=0),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, output_nc, 5, 2, padding=3, output_padding=1),
+            nn.Tanh()
         )
-        self.sigm = nn.Sigmoid()
 
     def forward(self, x):
-        x = self.main(x).reshape(-1)
-        x = self.sigm(x)
-        return x
+        return self.conv(self.linear(x).reshape(x.shape[0], 256, 7, 7))
 
+class DiscriminatorMnist(nn.Module):
+    def __init__(self, ic=1):
+        super(DiscriminatorMnist, self).__init__()
+        self.main = nn.Sequential(
+            nn.Conv2d(ic, 32, 5, 1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(32, 64, 5, 2, padding=1),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(64, 128, 5, 2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128, 1, 5, 3, padding=1),
+            nn.Flatten(start_dim=0),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        x = self.main(x)
+        return x
 
 class Discriminator(nn.Module):
     def __init__(self, ic=3):
