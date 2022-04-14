@@ -44,13 +44,14 @@ def Kmeans_DCGAN_feature_extractor(dataset_name='CIFAR'):
     img = img.to(device)
     fm, _ = netD.forward_feature(img)
     w_rec, _ = netD(img)
-    img_rec = netG(w_rec[:,:,None,None])
-    fm_rec,_ = netD.forward_feature(img_rec)
+    img_rec = netG(w_rec[:, :, None, None])
+    fm_rec, _ = netD.forward_feature(img_rec)
 
-    prediction_reconstruct = Kmeans.predict(fm[-2].reshape(batch_size_kmeans,-1).detach().cpu().numpy())
-    accuracy_real = sklearn.metrics.accuracy_score(label,prediction_real)
+    prediction_reconstruct = Kmeans.predict(fm[-2].reshape(batch_size_kmeans, -1).detach().cpu().numpy())
+    accuracy_real = sklearn.metrics.accuracy_score(label, prediction_real)
     accuracy_rec = sklearn.metrics.accuracy_score(label, prediction_reconstruct)
     print(f"Accuracy {accuracy_real}, accuracy reconstruct {accuracy_rec}\n")
+
 
 if __name__ == "__main__":
     Kmeans_DCGAN_feature_extractor(dataset_name="CIFAR")

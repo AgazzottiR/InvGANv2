@@ -23,7 +23,7 @@ def get_norm_layer(norm_type='instance'):
     return norm_layer
 
 
-def get_scheduler(optimizer, lr_policy,opt):
+def get_scheduler(optimizer, lr_policy, opt):
     if lr_policy == 'linear':
         def lamda_rule(epoch):
             lr_l = 1.0 - max(0, epoch + opt.epoch_count - opt.n_epochs) / float(opt.n_epochs_decay + 1)
@@ -75,15 +75,19 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
     init_weights(net, init_type, init_gain=init_gain)
     return net
 
+
 # input_nc, output_nc, nfg, netG='vanilla', norm='batch', use_dropout=False, init_type='normal', init_gain=0.02,
 #              gpu_ids=[]
-def define_G():
-    return Generator()
+def define_G(ch):
+    return Generator(output_nc=ch)
 
 
 # input_nc, ndf, netD, n_layers_D=3, norm='batch', init_type='normal', init_gain=.02, gpu_ids=[]
-def define_D():
-    return Discriminator()
+def define_D(ch,vanilla=False):
+    if vanilla:
+        return DiscriminatorVanilla(ic=ch)
+    return Discriminator(ic=ch)
+
 
 def define_M():
     return MappingNetwork()
@@ -101,7 +105,7 @@ class MappingNetwork(nn.Module):
         )
 
     def forward(self, x):
-        return self.main(x)[:,:,None,None]
+        return self.main(x)[:, :, None, None]
 
 
 class Generator(nn.Module):
@@ -128,8 +132,31 @@ class Generator(nn.Module):
         return self.main(x)
 
 
+class DiscriminatorVanilla(nn.Module):
+    def __init__(self, ic=1):
+        super(DiscriminatorVanilla, self).__init__()
+        self.main = nn.Sequential(
+            nn.Conv2d(ic, 32, 5, 2, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, 5, 2, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 128, 5, 2, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.Conv2d(128, 1, 5, 2, padding=1),
+        )
+        self.sigm = nn.Sigmoid()
+
+    def forward(self, x):
+        x = self.main(x).reshape(-1)
+        x = self.sigm(x)
+        return x
+
+
 class Discriminator(nn.Module):
-    def __init__(self,ic=3):
+    def __init__(self, ic=3):
         super(Discriminator, self).__init__()
         self.main = nn.Sequential(
             nn.Conv2d(ic, 32, 5, 2, padding=1),
@@ -157,7 +184,7 @@ class Discriminator(nn.Module):
         out_z, out_rf = x[:, 0:100], self.sigm(x[:, -1])
         return out_z, out_rf
 
-    def forward_feature(self,x, linear=False):
+    def forward_feature(self, x, linear=False):
         fm = [x]
         fm_names = ['input']
         for layer in self.main.children():

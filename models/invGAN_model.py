@@ -9,7 +9,8 @@ import torch.nn as nn
 class InvGanModel(BaseModel):
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
-        self.loss_name = ['GAN', 'GAN_D', 'GAN_GEN', 'L2_D', 'L2_GEN', 'MMD_D', 'FL_GEN', 'L2_MN', 'MMD_MN', 'GAN_MN', 'D',
+        self.loss_name = ['GAN', 'GAN_D', 'GAN_GEN', 'L2_D', 'L2_GEN', 'MMD_D', 'FL_GEN', 'L2_MN', 'MMD_MN', 'GAN_MN',
+                          'D',
                           'G']
         self.loss_GAN_D = 0
         self.loss_GAN_GEN = 0
@@ -35,11 +36,11 @@ class InvGanModel(BaseModel):
         else:
             self.model_names = ['G', 'M']
 
-        self.netG = networks.define_G().to(self.device)
+        self.netG = networks.define_G(ch=1).to(self.device)
         self.netM = networks.define_M().to(self.device)
 
         if self.isTrain:
-            self.netD = networks.define_D().to(self.device)
+            self.netD = networks.define_D(ch=1).to(self.device)
 
         if self.isTrain:
             self.fake_imgs = ImagePool(opt.pool_size)
@@ -60,16 +61,20 @@ class InvGanModel(BaseModel):
                 ln = ln + '_W'
                 if ln.startswith('_'):
                     continue
-                self.loss_weights[ln] = 1.
+                if "GAN" in ln:
+                    self.loss_weights[ln] = 1.
+                else:
+                    self.loss_weights[ln] = 0.
 
-    def update_weights(self,mf_d=3):
+    def update_weights(self, mf_d=3):
         for w in self.loss_weights:
             mf = mf_d
             if '_MN' in w or '_GEN' in w:
                 if self.loss_weights[w] > 10:
                     mf = 1
                 self.loss_weights[w] *= mf
-                print(f"Updating loss {w.strip('_W')} multiplying by a factor {mf}: {self.loss_weights[w]/mf} --> {self.loss_weights[w]}")
+                print(
+                    f"Updating loss {w.strip('_W')} multiplying by a factor {mf}: {self.loss_weights[w] / mf} --> {self.loss_weights[w]}")
 
     def set_input(self, input):
         # Evenutual input preprocessing
@@ -111,8 +116,10 @@ class InvGanModel(BaseModel):
         loss_D_fake = self.criterionGAN(self.pred_fake, torch.ones(self.pred_fake.shape[0], requires_grad=True).to(
             self.device) * self.fake_label)
 
-        self.loss_L2_D = self.criterionL2(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_fake)  * self.loss_weights['L2_D_W']
-        self.loss_MMD_D = self.criterionMMD(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_real) * self.loss_weights['MMD_D_W']
+        self.loss_L2_D = self.criterionL2(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_fake) * \
+                         self.loss_weights['L2_D_W']
+        self.loss_MMD_D = self.criterionMMD(self.w_no_grad.reshape(self.w_no_grad.shape[0:2]), self.output_w_real) * \
+                          self.loss_weights['MMD_D_W']
 
         self.loss_GAN_D = (loss_D_real + loss_D_fake) * 0.5 * self.loss_weights['GAN_D_W']
         self.loss_D = self.loss_GAN_D + self.loss_MMD_D + self.loss_L2_D
@@ -150,8 +157,8 @@ class InvGanModel(BaseModel):
         self.fm_rec, _ = self.netD.forward_feature(self.netG(self.fm[-2][:, :, None, None]))
 
         self.loss_GAN_GEN = self.criterionGAN(self.netD(self.fake)[1],
-                                            torch.ones(self.fake.shape[0], requires_grad=True).to(
-                                                self.device) * self.real_label) * self.loss_weights['GAN_GEN_W']
+                                              torch.ones(self.fake.shape[0], requires_grad=True).to(
+                                                  self.device) * self.real_label) * self.loss_weights['GAN_GEN_W']
         self.loss_FL_GEN = self.criterionL2(self.fm[-4], self.fm_rec[-4]) * self.loss_weights['FL_GEN_W']
         self.loss_L2_GEN = self.criterionL2(self.w_real_rec, self.w_real) * self.loss_weights['L2_GEN_W']
 

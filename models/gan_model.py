@@ -9,21 +9,24 @@ import torch.nn as nn
 class GanModel(BaseModel):
     def __init__(self, opt):
         BaseModel.__init__(self, opt)
-        self.loss_name = ['GAN']
+        self.loss_name = ['GAN', 'GAN_GEN', 'GAN_DISC']
+        self.loss_GAN_GEN = 0
+        self.loss_GAN_DISC = 0
         self.loss_GAN = 0
-        visual_names_A = ['real', 'fake']
         self.real_label = 1.
         self.fake_label = 0.
+        self.loss_weights = dict()
+        self.fixed_noise = torch.randn(64, 100, 1, 1).to(self.device)
 
         if self.isTrain:
             self.model_names = ['G', 'D']
         else:
             self.model_names = ['G']
 
-        self.netG = networks.define_G().to(self.device)
+        self.netG = networks.define_G(ch=1).to(self.device)
 
         if self.isTrain:
-            self.netD = networks.define_D().to(self.device)
+            self.netD = networks.define_D(ch=1,vanilla=True).to(self.device)
 
         if self.isTrain:
             self.fake_imgs = ImagePool(opt.pool_size)
@@ -41,7 +44,7 @@ class GanModel(BaseModel):
             input = input[:, :, None, None]
         elif len(input.shape) < 2:
             raise Exception('Input shape must be [bach_size, latent_size]')
-        assert input.shape[1] == self.opt.latent_size
+        # assert input.shape[1] == self.opt.latent_size
         self.noise = input.to(self.device)
 
     # Image input
@@ -53,22 +56,28 @@ class GanModel(BaseModel):
         self.fake = self.netG(self.noise.to(self.device))
 
     def backward_D(self, netD, real, fake):
-        _, pred_real = netD(real)
-        loss_D_real = self.criterionGAN(pred_real, torch.ones(pred_real.shape[0]).to(self.device)*self.real_label)
+        pred_real = netD(real)
+        loss_D_real = self.criterionGAN(pred_real, torch.ones(pred_real.shape[0]).to(self.device) * self.real_label)
 
-        _, pred_fake = netD(fake.detach())
-        loss_D_fake = self.criterionGAN(pred_fake, torch.ones(pred_fake.shape[0]).to(self.device)*self.fake_label)
+        pred_fake = netD(fake.detach())
+        loss_D_fake = self.criterionGAN(pred_fake, torch.ones(pred_fake.shape[0]).to(self.device) * self.fake_label)
 
-        loss_D = (loss_D_real + loss_D_fake) * 0.5
-        self.loss_GAN += loss_D
-        loss_D.backward()
-        return loss_D
+        self.loss_GAN_DISC = (loss_D_real + loss_D_fake) * 0.5
+        self.loss_GAN += self.loss_GAN_DISC
+        self.loss_GAN_DISC.backward()
 
     def backward_G(self):
-        lossG_gan = self.criterionGAN(self.netD(self.fake)[1],torch.ones(self.fake.shape[0]).to(self.device)*self.real_label)
-        self.lossG = lossG_gan
-        self.loss_GAN = self.lossG
-        self.lossG.backward()
+        self.loss_GAN_GEN = self.criterionGAN(self.netD(self.fake), torch.ones(self.fake.shape[0]).to(self.device) * self.real_label)
+        self.loss_GAN = self.loss_GAN_GEN
+        self.loss_GAN_GEN.backward()
+
+    def get_images(self):
+        with torch.no_grad():
+            imgs = self.netG(self.fixed_noise)
+        return imgs
+
+    def update_weights(self):
+        pass
 
     def optimize_parameters(self):
         # forward

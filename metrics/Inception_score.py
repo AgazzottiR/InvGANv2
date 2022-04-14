@@ -1,36 +1,38 @@
-"""
 from math import floor
 
-import matplotlib as plt
-import sklearn.metrics
+from torchmetrics.image.inception import InceptionScore
 import torch.nn.parallel
-from torch.nn.functional import one_hot
 import torch.utils.data
-import torchvision.utils as vutils
 from numpy import exp
 from numpy import expand_dims
 from numpy import log
 from numpy import mean
 from numpy import std
-from sklearn.cluster import KMeans
+from torchvision.transforms import transforms
 
-from initialization import *
-from model_class_conditional_v2 import Discriminator, Generator
+from metrics.classfier import classifyMnist
+from models.networks import Generator
+
+_ = torch.manual_seed(123)
 
 
-# assumes images have any shape and pixels in [0,255]
-def calculate_inception_score(images_to_transform, label, n_split=10, eps=1E-16):
+def trasform_for_Iv3(images_to_transform, nc=3):
     img_size = 299
     transform_inception_v3 = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Resize(img_size),
-        transforms.CenterCrop(img_size),
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
-    images = torch.zeros((images_to_transform.shape[0],3, img_size,img_size))
+    images = torch.zeros((images_to_transform.shape[0], nc, img_size, img_size)).to(torch.uint8)
     for i in range(images.shape[0]):
         images[i] = transform_inception_v3(images_to_transform[i])
+    return images
+
+# assumes images have any shape and pixels in [0,255]
+def calculate_inception_score(images_to_transform, label, n_split=10, eps=1E-16, nc=3):
+    print("Function Deprecated should call get_inception_score(img)")
+    images = trasform_for_Iv3(images_to_transform)
     # load cifar10 images
     print('loaded', images.shape)
     # load inception v3 model
@@ -74,4 +76,16 @@ def calculate_inception_score(images_to_transform, label, n_split=10, eps=1E-16)
     is_avg, is_std = mean(scores), std(scores)
     print('score', is_avg, is_std)
     return is_avg, is_std
-"""
+
+
+def get_inception_score(imgs):
+    inception = InceptionScore()
+    inception.update(imgs)
+    result = inception.compute()
+    print("Inception Score is (avg,var): ", [a.item() for a in result])
+    return result
+
+if __name__ == "__main__":
+    imgs = torch.randint(0, 255, (100, 3, 32, 32), dtype=torch.uint8)
+    imgs = trasform_for_Iv3(imgs)
+    get_inception_score(imgs)

@@ -253,7 +253,7 @@ class Visualizer():
             if len(optimizers) > 0:
                 optims['lr_netG'] = optimizers[0].param_groups[0]['lr']
                 optims['lr_netD'] = optimizers[1].param_groups[0]['lr']
-                optims['lr_netM'] = optimizers[2].param_groups[0]['lr']
+                # optims['lr_netM'] = optimizers[2].param_groups[0]['lr']
             self.wandb_run.log(optims)
             self.wandb_run.log(losses)
             self.wandb_run.log(loss_weights)
@@ -279,9 +279,9 @@ class Visualizer():
        #     log_file.write('%s\n' % message)  # save the message
 
 
-    def plot_images(self, img, img_rec):
+    def plot_images(self, imgs):
         if self.opt.use_wandb:
-            img = np.transpose(torchvision.utils.make_grid(img).cpu(),(1,2,0))
-            img_rec = np.transpose(torchvision.utils.make_grid(img_rec).cpu(),(1,2,0))
-            wandb.log({"Images": wandb.Image(img.numpy())})
-            wandb.log({"Images_rec": wandb.Image(img_rec.numpy())})
+            for i,img in enumerate(imgs):
+                img = np.transpose(torchvision.utils.make_grid(img).cpu(),(1,2,0))
+                wandb.log({f"Images {i}": wandb.Image(img.numpy())})
+

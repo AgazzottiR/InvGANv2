@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
             if total_iters % opt.print_freq == 0:
                 img, img_rec = model.get_images()
-                visualizer.plot_images(img, img_rec)
+                visualizer.plot_images([img, img_rec])
                 losses = model.get_current_losses()
                 t_comp = (time.time() - iter_start_time) / opt.batch_size
                 visualizer.print_current_losses(epoch, epoch_iter, losses, t_comp, t_data)
