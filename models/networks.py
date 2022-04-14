@@ -158,6 +158,7 @@ class GeneratorMnist(nn.Module):
     def forward(self, x):
         return self.conv(self.linear(x).reshape(x.shape[0], 256, 7, 7))
 
+
 class DiscriminatorMnist(nn.Module):
     def __init__(self, ic=1):
         super(DiscriminatorMnist, self).__init__()
@@ -168,10 +169,12 @@ class DiscriminatorMnist(nn.Module):
             nn.Conv2d(32, 64, 5, 2, padding=1),
             nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(64, 128, 5, 2, padding=1),
+            nn.Conv2d(64, 128, 5, 2, padding=3),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128, 1, 5, 3, padding=1),
+            nn.Flatten(),
+            nn.Dropout(),
+            nn.Linear(128*7*7,1),
             nn.Flatten(start_dim=0),
             nn.Sigmoid()
         )
